@@ -1,0 +1,117 @@
+# Here I have imported the modules needed.
+
+import random
+import requests
+
+# This section is where I have connected to the API.
+# characters = All the characters in the database.
+
+def random_character():
+    url = 'https://hp-api.herokuapp.com/api/characters'
+    response = requests.get(url)
+    characters = response.json()
+    first_35_characters = characters[:35]
+
+# This is the excluded section to remove characters with no stats.
+    # creates 'filtered_characters' which contains characters from the above 'character'
+    # that do not have names that are in the 'excluded_characters' list below.
+
+    excluded_characters = ['Mr Crabbe', 'Mr Goyle',
+                           'Vincent Crabbe', 'Gregory Goyle',
+                           'Boa constrictor', 'Fawkes', 'Dolores Umbridge',
+                           'Kingsley Shacklebolt', 'Mrs Norris', 'Argus Filch',
+                           'Vernon Dursley', 'Petunia Dursley']
+    filtered_characters = [characters for characters in first_35_characters if characters.get('name')
+                           not in excluded_characters]
+
+# This is where we pull data we want from the API.
+    # 'character' = Defining that a character is a random choice from the
+    # 'filtered characters list' above.
+
+    character = random.choice(filtered_characters)
+    character_name = character.get('name', 'Unknown')
+    year_of_birth = character.get('yearOfBirth', 'Unknown')
+
+# In order to get the characters age, I have used 1992 (when the end of book 1 is set)
+    # - year_of_birth to get age. I added an 'int' so if a number is returned age is calculated,
+    # if it's not an integer it will just return unknown.
+
+    age = 'unknown'
+    if isinstance(year_of_birth, int):
+        age = 1992 - year_of_birth
+    else:
+        age = 'unknown'
+
+# More pulling from the API.
+    # (The false bit means if it doesn't return anything it will turn it into false.)
+
+    is_student = character.get('hogwartsStudent', False)
+    is_staff = character.get('hogwartsStaff', False)
+    is_wizard = character.get('wizard', False)
+
+# Defining the wand length of characters if they don't have a known wand length.
+    # if wizard but unknown wand length, I've given them a value of 8. This uses an if/elif statement.
+
+    wand_length = character.get('wand', {}).get('length', 'Unknown')
+    if wand_length is None and not is_wizard:
+        wand_length = 0
+    elif wand_length is None:
+        wand_length = 8
+
+# Defining what the magical_rating is for each character, depending on their status as a wizard,
+    # staff member or student. This uses an if/elif statement.
+
+    magical_rating = 0
+    if character_name in ['Lord Voldemort', 'Albus Dumbledore']:
+        magical_rating = 15
+    elif is_staff and is_wizard:
+        magical_rating = 10
+    elif is_wizard and not is_student:
+        magical_rating = 7
+    elif is_student:
+        magical_rating = 5
+
+# This returns what we need from the pulled API data for each character card.
+
+    return {
+    'name': character_name,
+    'age': age,
+    'wand length': wand_length,
+    'magical rating': magical_rating,
+}
+
+# Here we define what run is, so it can be used, this is the rules of the game.
+# first we establish what our card is, this is from the 'random_character' and 'return' that we created earlier.
+# I then added an extra bit to tell you what your current cards stats are using F-strings.
+# The code sort of reads like a story.
+# also defines what 'stat choice' is.
+
+def run():
+    my_character_card = random_character()
+    print('You were given {}'.format(my_character_card ['name']))
+    print(f'Stats: Age: {my_character_card["age"]},'
+           f' Wand Length: {my_character_card["wand length"]},'
+           f' Magical Rating: {my_character_card["magical rating"]}')
+    stat_choice = input('Which of their stats would you like to use? (age, wand length, magical rating) ')
+
+# Here the computer card is created, pretty much the same code as above ^.
+
+    computer_character_card = random_character()
+    print('Your opponent was {}'.format(computer_character_card ['name']))
+    print(f'Opponent Stats: Age: {computer_character_card["age"]},'
+          f' Wand Length: {computer_character_card["wand length"]},'
+          f' Magical Rating: {computer_character_card["magical rating"]}')
+
+# Here the 'stat choice' is used from earlier and the 'character card'
+    # from earlier to define your stat and the computer's stat.
+
+    my_stat = my_character_card[stat_choice]
+    computer_stat = computer_character_card[stat_choice]
+
+# If statement for win/lose
+
+    if my_stat > computer_stat: print('You win, congratulations!')
+    elif my_stat < computer_stat: print('You lose, better luck next time!')
+    else: print('Draw!')
+
+run()
