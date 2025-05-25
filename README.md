@@ -1,4 +1,4 @@
-Application
+
 Hello, below I have included some small examples of code that I have completed in the past. I have included the following projects:
 1. My portion of the team Python project from the "Introduction to Python and Apps" Code First Girls Course.
 2. My individual SQL project from the "Introduction to Data and SQL" Code First Girls Course.
