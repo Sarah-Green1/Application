@@ -1,0 +1,475 @@
+---
+title: "MATH5741M-Dog"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+Does breed influence rehoming time in shelter dogs
+
+Step 1) Collect the data
+
+```{r}
+#Started by loading the data
+load("/Users/sarahgreen/Desktop/R/rehoming.RData")
+#Created unique data sample
+createsample(201358111)
+save(mysample, file = "mysample.RData")
+#View the data
+View(mysample)
+table(mysample$Breed)
+```
+
+My breeds are 94 rottweilers, 84 border collies, and 12 bichon frisé.
+
+Step 2) Cleaning the data of missing values (NA and 99999)
+
+```{r}
+rehoming_rows_removed <- nrow(mysample[mysample$Rehomed ==99999,])
+rehoming_rows_removed
+percentage_of_rehoming_removed <- ((rehoming_rows_removed/nrow(mysample)*100))
+percentage_of_rehoming_removed
+breed_rows_removed <- sum(is.na(mysample$Breed))
+breed_rows_removed
+percentage_of_breed_removed <- ((breed_rows_removed/nrow(mysample)*100))
+percentage_of_breed_removed
+total_rows_removed <- rehoming_rows_removed+breed_rows_removed
+total_rows_removed
+percentage_total_removed <- ((total_rows_removed/nrow(mysample))*100)
+percentage_total_removed
+```
+Get final cleaned data
+
+```{r}
+final_clean_data <- mysample[mysample$Rehomed !=99999 & !is.na(mysample$Breed),]
+View(final_clean_data)
+#Splitting the data by breed for easy use
+breed_data <- split(final_clean_data, final_clean_data$Breed)
+breed1 <- breed_data[["Rottweiler"]]
+breed2 <- breed_data[["Border Collie"]]
+breed3 <- breed_data[["Bichon Frise"]]
+summary(breed1)
+summary(breed2)
+summary(breed3)
+```
+
+Step 3) Exploring the data.
+Create a table of all the mean values per breed
+
+```{r}
+mean_table <- aggregate(cbind(Visited,Rehomed,Health) ~ Breed, data = final_clean_data, FUN = mean)
+colnames(mean_table) <- c("Breed", "Visited (Mean)", "Rehomed (Mean)", "Health (Mean)")
+mean_table
+```
+Assigning a specific colour to the seperate breeds
+
+```{r}
+breed_colours <- c("lightblue", "lightgreen", "coral")
+```
+
+Creating a boxplot summarising the table.
+
+```{r}
+boxplot(Rehomed ~ Breed, data = final_clean_data,
+        main = "Rehoming time by breed",
+        xlab = "Breed",
+        ylab = "Rehomed time (Weeks)",
+        col = breed_colours)
+
+```
+
+Creating a Cumulative distribution graph that compares the 3 breeds by rehoming time.
+
+```{r}
+plot(ecdf(breed1$Rehomed),
+     main = "Rehoming time by breed (ECDF)",
+     xlab = "Rehomed time (Weeks)",
+     ylab = "Cumulative distribution function (CDF)",
+     col = "red",
+     xlim = range(final_clean_data$Rehomed))
+#adding the other lines 
+lines(ecdf(breed2$Rehomed),col = "green",)
+lines(ecdf(breed3$Rehomed),col = "blue",)
+```
+
+Basic normal QQ plots for all breeds 
+
+```{r}
+par (mfrow=c(1,3))
+
+#Rottweiler
+qqnorm(breed1$Rehomed,
+       main = "QQ Plot for rottweiler rehoming time",
+       cex.main = 1.2,
+       xlab = "Theoretical quantiles",
+       ylab = "Sample quantiles",
+       ylim = c(0, 50))
+qqline(breed1$Rehomed,
+       col = "red")
+#Border collie
+qqnorm(breed2$Rehomed,
+       main = "QQ Plot for border collie rehoming time",
+       cex.main = 1.2,
+       xlab = "Theoretical quantiles",
+       ylab = "Sample quantiles",
+       ylim = c(0, 50))
+qqline(breed2$Rehomed,
+       col = "green")
+#Bichon frise
+qqnorm(breed3$Rehomed,
+       main = "QQ Plot for bichon frisé rehoming time",
+       cex.main = 1.2,
+       xlab = "Theoretical quantiles",
+       ylab = "Sample quantiles",
+       ylim = c(0, 50),
+       xlim = c(-2,2))
+qqline(breed3$Rehomed,
+       col = "blue")
+
+```
+
+Adjusted QQ plots for best fit distributions and transformations.
+
+```{r}
+par (mfrow=c(1,3))
+#Rottweiler
+#obtain gamma data: mean, variance, shape and rate
+mean_gamma <- mean(breed1$Rehomed)
+variance_gamma <- var(breed1$Rehomed)
+shape_gamma <- mean_gamma^2/variance_gamma
+rate_gamma <- mean_gamma/variance_gamma
+
+observed <- sort(breed1$Rehomed)
+theoretical <- qgamma(ppoints(length(observed)),shape = shape_gamma, rate = rate_gamma)
+
+plot(theoretical, observed,
+      main = "Rottweiler QQ plot (Gamma)",
+      xlab = "Theoretical quantiles",
+      ylab = "Sample quantiles")
+abline(0,1, col = "red")
+
+#Border collie
+#Square root the data to reduce the sqew.
+breed2_sqrt <- sqrt(breed2$Rehomed)
+
+qqnorm(breed2_sqrt,
+       main = "Sqrt border collie QQ plot (Normal)",
+       xlab = "Theoretical quantiles",
+       ylab = "Sample quantiles")
+qqline(breed2_sqrt,
+       col = "green")
+
+#Bichon frise
+#square root of the data
+breed3_sqrt <- sqrt(breed3$Rehomed)
+
+qqnorm(breed3_sqrt,
+       main = "Sqrt bichon frise QQ plot (Normal)",
+       xlab = "Theoretical quantiles",
+       ylab = "Sample quantiles")
+qqline(breed3_sqrt,
+       col = "blue")
+```
+
+Basic histograms of breed rehoming times, default breaks 
+
+```{r}
+par(mfrow=c(1,3))
+#Rottweiler
+hist(breed1$Rehomed,
+     main = "Rottweiler",
+     xlab = "Rehomed time (Weeks)",
+     ylab = "Frequency",
+     col = "coral")
+#Border collie
+hist(breed2$Rehomed,
+     main = "Border collie",
+     xlab = "Rehomed time (Weeks)",
+     ylab = "Frequency",
+     col = "lightgreen")
+#Bichon frise
+hist(breed3$Rehomed,
+     main = "Bichon frise",
+     xlab = "Rehomed time (Weeks)",
+     ylab = "Frequency",
+     col = "lightblue")
+```
+
+Adjusted histograms for best distributions and transformations.(default breaks)
+
+```{r}
+#install mass package
+install.packages("MASS")
+library(MASS)
+
+par(mfrow=c(1,3))
+#Rottweiler
+hist(breed1$Rehomed,
+     main = "Rottweiler",
+     xlab = "Rehomed time (Weeks)",
+     ylab = "Density",
+     col = "coral",
+     freq = F,
+     ylim = c(0,0.10))
+#Add the kernel density estimate line for comparison
+lines(density(breed1$Rehomed), col = "darkred", lwd = 2)
+#Add gamma distribution line 
+curve(dgamma(x, shape_gamma, rate=rate_gamma),
+      col = "chartreuse",
+      add = T,
+      lwd = 2)
+legend ("topright",
+        legend = c("Kernel density", "Gamma distribution"),
+        col = c("darkred","chartreuse"),
+        lwd = 2)
+
+text (x = max (breed1$Rehomed)*0.7, y=0.08,
+      labels = bquote("α = 2.86,
+β = 0.27"))
+#Border collie
+hist(breed2_sqrt,
+     main = "Border collie (Sqrt)",
+     xlab = "Sqrt rehomed time (Weeks)",
+     ylab = "Density",
+     col = "lightgreen",
+     freq = F,
+     ylim = c(0,0.45))
+#Add the kernel density estimate line for comparison
+lines(density(breed2_sqrt), col = "darkgreen", lwd = 2)
+#Add normal distribution line
+normal_line <- fitdistr(breed2_sqrt, "normal")
+curve(dnorm(x, mean = normal_line$estimate[1], sd=normal_line$estimate[2]),
+      col = "purple",
+      add = T,
+      lwd = 2)
+legend ("topright",
+        legend = c("Kernel density", "Normal distribution"),
+        col = c("darkgreen","purple"),
+        lwd = 2)
+
+text (x = max (breed2_sqrt)*0.7, y=0.36,
+      labels = bquote("μ = 4.29,
+σ2 = 2.07"))
+#Bichon frise
+hist(breed3$Rehomed,
+     main = "Bichon frisé",
+     xlab = "Rehomed time (Weeks)",
+     ylab = "Density",
+     col = "lightblue",
+     freq = F,
+     ylim = c(0,0.10))
+#Add the kernel density estimate line for comparison
+lines(density(breed3$Rehomed), col = "darkblue", lwd = 2)
+#Add normal distribution line
+normal_line2 <- fitdistr(breed3$Rehomed, "normal")
+curve(dnorm(x, mean = normal_line2$estimate[1], sd=normal_line2$estimate[2]),
+      col = "purple",
+      add = T,
+      lwd = 2)
+legend ("topright",
+        legend = c("Kernel density", "Normal distribution"),
+        col = c("darkblue","purple"),
+        lwd = 2)
+
+text (x = max(breed3$Rehomed)*0.7, y=0.08,
+      labels = bquote("μ = 23.40,
+σ2 = 146.17"))
+```
+I now need the parameters of the proposed distributions
+Methods of moments line could be plotted 
+```{r}
+#Rottweilers
+mean_gamma
+variance_gamma
+shape_gamma 
+rate_gamma
+#Border collies
+mean_breed2 <- mean(breed2_sqrt)
+sd_breed2 <-sd(breed2_sqrt)
+mean_breed2
+sd_breed2
+#Bichon frise
+mean_breed3 <- mean(breed3$Rehomed)
+sd_breed3 <-sd(breed3$Rehomed)
+mean_breed3
+sd_breed3
+#Creating a table of all the parameters
+
+parameter_table <- data.frame(
+  breed = c("Rottweiler", "Border collie (Sqrt)", "Bichon frise"),
+  Model = c("Gamma", "Normal", "Normal"),
+  Parameters = c(
+    sprintf("Shape: %.2f, Rate: %.2f", shape_gamma, rate_gamma),
+    sprintf("Mean: %.2f, SD: %.2f", mean_breed2, sd_breed2),
+    sprintf("Mean: %.2f, SD: %.2f", mean_breed3, sd_breed3)
+))
+parameter_table
+
+```
+
+Test breeds using Shapiro wilk and Kolmogorov-smirnov test.
+
+```{r}
+#Kolmogorov-smirnov test for gamma
+breed1_jittered <- breed1$Rehomed + runif(length(breed1$Rehomed), -0.001, 0.001)
+ks.test(breed1_jittered,"pgamma", shape_gamma, rate_gamma)
+#Shapiro wilk for normal
+shapiro.test(breed2_sqrt)
+shapiro.test(breed3_sqrt)
+shapiro.test(breed2$Rehomed)
+shapiro.test(breed3$Rehomed)
+
+ks.test(breed3$Rehomed, "punif", min=min(breed3$Rehomed),max=max(breed3$Rehomed))
+```
+
+Confidence intervals (T-tests)
+
+```{r}
+#Rottweiler
+breed1_test <- t.test(breed1$Rehomed, mu=27, alternative="t", conf.level=0.95)
+breed1_test
+#Rottweiler Z-test
+sd_b1 <- sd(breed1$Rehomed)
+z_score_sd <- (mean_gamma-27)/sd_b1/(sd_b1/sqrt(93))
+pvalue_z <- 2*(1-pnorm(abs(z_score_sd)))
+z_score_sd
+pvalue_z
+#This was not used due to choosing t-test
+#Border collie
+breed2_test <- t.test(breed2$Rehomed, mu=27, alternative="t", conf.level=0.95)
+breed2_test
+#Bichon frise
+breed3_test <- t.test(breed3$Rehomed, mu=27, alternative="t", conf.level=0.95)
+breed3_test
+```
+Caterpillar plots for CI
+
+```{r}
+
+breed1_test <- t.test(breed1$Rehomed, mu=27, alternative="t", conf.level=0.95)
+
+z_critical <- qnorm(0.975)
+se <- sd_b1/sqrt(93)
+ci_low <-mean_gamma-z_critical*se
+ci_up <-mean_gamma+z_critical*se
+ci_low
+ci_up
+#not used due to choosing t-test^
+
+breed2_test <- t.test(breed2$Rehomed, mu=27, alternative="t", conf.level=0.95)
+breed3_test <- t.test(breed3$Rehomed, mu=27, alternative="t", conf.level=0.95)
+
+effect <- c(breed1_test$estimate, breed2_test$estimate, breed3_test$estimate)
+lower <- c(breed1_test$conf.int[1], breed2_test$conf.int[1], breed3_test$conf.int[1])
+upper <- c(breed1_test$conf.int[2], breed2_test$conf.int[2], breed3_test$conf.int[2])
+endpoint <- c("Rottweiler", "Border collie", "Bichon frisé" )
+verticalpos <- seq_along(endpoint)
+
+caterpillar_colours <- c("darkred","darkgreen","darkblue")
+
+par(oma=c(0,0,0,0), mar=c(6,3,1,1))
+plot(x=1,
+     y=0,
+     type="n",
+     ann=F,
+     xaxt="n",
+     yaxt="n",
+     xlab="",
+     ylab=NULL,
+     bty="n",
+     xlim=c(0,35),
+     ylim=c(0,length(endpoint)+1))
+x_lines <- seq(0,35, by=1)
+abline(v=x_lines, col="grey90", lty=3)
+abline(v=27, col="red", lwt=2)
+#Adding the points 
+for(i in seq_along(verticalpos)) {
+  points(effect[i],verticalpos[i],cex=1.5,pch=16,col=caterpillar_colours[i])
+  lines(c(lower[i],upper[i]), c(verticalpos[i], verticalpos[i]), lwd=1.5, col=caterpillar_colours[i])
+  lines(c(lower[i],lower[i]), c(verticalpos[i]+0.2, verticalpos[i]-0.2), lwd=1, col=caterpillar_colours[i])
+  lines(c(upper[i],upper[i]), c(verticalpos[i]+0.2, verticalpos[i]-0.2), lwd=1, col=caterpillar_colours[i])
+  
+  text(x=effect[i],
+       y=verticalpos[i] + 0.4,
+       labels=paste("(", round(lower[i],1), ", ", round(upper[i],1), ")", sep=""), 
+       cex=0.8)
+}
+text(x=-0.5, y=verticalpos, label=endpoint, las=1, adj=0, cex=1)
+axis(side=1,at=seq(0,35, by=5))
+mtext("Mean time of dogs rehomed in weeks (95% confidence intervals)",side=1,line=4,cex=1)
+
+```
+
+
+Comparing breed means via two sample T tests
+
+```{r}
+#comparing the breeds
+# 1+2
+test1_2 <- t.test(breed1$Rehomed,breed2$Rehomed)
+test1_2
+# 1+3
+test1_3 <- t.test(breed1$Rehomed,breed3$Rehomed)
+test1_3
+# 2+3
+test2_3 <- t.test(breed2$Rehomed,breed3$Rehomed)
+test2_3
+```
+
+Compare confidence intervals via a forest or caterpillar plot.
+
+```{r}
+
+mean_dif <- c((test1_2$estimate[1]-test1_2$estimate[2]),
+              (test1_3$estimate[1]-test1_3$estimate[2]),
+              (test2_3$estimate[1]-test2_3$estimate[2]))
+lower <- c(test1_2$conf.int[1], test1_3$conf.int[1], test2_3$conf.int[1])
+upper <- c(test1_2$conf.int[2], test1_3$conf.int[2], test2_3$conf.int[2])
+endpoint <- c("Rottweiler +
+Border collie", "Rottweiler +
+Bichon frisé", "Border collie +
+Bichon frisé" )
+verticalpos <- seq_along(endpoint)
+
+par(oma=c(0,0,0,0), mar=c(6,3,1,1))
+plot(x=1,
+     y=0,
+     type="n",
+     ann=F,
+     xaxt="n",
+     yaxt="n",
+     xlab="",
+     ylab=NULL,
+     bty="n",
+     xlim=c(-30,10),
+     ylim=c(0,length(endpoint)+1))
+x_lines <- seq(-30,10, by=1)
+abline(v=x_lines, col="lightgrey", lty=3)
+abline(v=0, col="grey90", lwt=2)
+#Adding the points 
+for(i in seq_along(verticalpos)) {
+  points(mean_dif[i],verticalpos[i],cex=1.5,pch=16)
+  lines(c(lower[i],upper[i]), c(verticalpos[i], verticalpos[i]), lwd=1.5)
+  lines(c(lower[i],lower[i]), c(verticalpos[i]+0.2, verticalpos[i]-0.2), lwd=1)
+  lines(c(upper[i],upper[i]), c(verticalpos[i]+0.2, verticalpos[i]-0.2), lwd=1)
+  
+  text(x=mean_dif[i],
+       y=verticalpos[i] + 0.4,
+       labels=paste("(", round(lower[i],1), ", ", round(upper[i],1), ")", sep=""), 
+       cex=0.8)
+}
+text(x=-30, y=verticalpos, label=endpoint, las=1, adj=0, cex=1)
+axis(side=1,at=seq(-30,10, by=5))
+mtext("(Mean differences in rehoming time between breeds in weeks (95% confidence intervals)",side=1,line=4, cex=1)
+```
+
+```{r}
+table_r1 <- table(breed1$Reason)
+table_r1
+table_r2 <- table(breed2$Reason)
+table_r2
+table_r3 <- table(breed3$Reason)
+table_r3
+```
+
